@@ -1,10 +1,14 @@
-import os, shutil
+import os, shutil, sys
 from textnode import TextNode, TextType
 from block_markdown import markdown_to_html_node
 
 def main():
-    copy_src_to_dest("static", "public")
-    generate_pages_recursive("content", "template.html", "public")
+    if len(sys.argv) > 1:
+        basepath = sys.argv[1]
+    else:
+        basepath = "/"
+    copy_src_to_dest("static", "docs")
+    generate_pages_recursive("content", "template.html", "docs", basepath)
 
 def copy_src_to_dest(src, dest):
     if not os.path.exists(src):
@@ -33,7 +37,7 @@ def extract_title(markdown):
             return line[2:].strip()
     raise Exception("No Title found")
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, basepath):
     fp = open(from_path)
     fp_content = fp.read()
     tp = open(template_path)
@@ -45,6 +49,9 @@ def generate_page(from_path, template_path, dest_path):
 
     modified_template = tp_content.replace("{{ Title }}", fp_title)
     modified_template = modified_template.replace("{{ Content }}", fp_to_html)
+    modified_template = modified_template.replace('href="/', f'href="{basepath}')
+    modified_template = modified_template.replace('src="/', f'src="{basepath}')
+
 
     dest_dir = os.path.dirname(dest_path)  # Returns the last directory in the given path
     if dest_dir != "":
@@ -57,7 +64,7 @@ def generate_page(from_path, template_path, dest_path):
     tp.close()
     dest_file.close()
 
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath):
     content_entries = os.listdir(dir_path_content)
     for entry in content_entries:
         entry_path = os.path.join(dir_path_content, entry)
@@ -65,10 +72,10 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
             parts = entry.split(".")
             file_name = parts[0]
             dest_file_path = os.path.join(dest_dir_path, f"{file_name}.html")
-            generate_page(entry_path, template_path, dest_file_path)
+            generate_page(entry_path, template_path, dest_file_path, basepath)
         else: # Directory
             next_dest = os.path.join(dest_dir_path, entry)
             os.makedirs(next_dest, exist_ok=True)
-            generate_pages_recursive(entry_path, template_path, next_dest)
+            generate_pages_recursive(entry_path, template_path, next_dest, basepath)
 
 main()
